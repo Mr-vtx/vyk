@@ -1,0 +1,23 @@
+[package]
+name = "imageforge"
+version = "0.1.0"
+edition = "2021"
+license = "MIT"
+description = "Rust core for ImageForge: decodes PNG/JPEG and encodes optimized WebP"
+
+[lib]
+crate-type = ["cdylib"]
+
+[dependencies]
+napi = "3"
+napi-derive = "3"
+image = { version = "0.25", default-features = false, features = ["png", "jpeg"] }
+webp = "0.3"
+ravif = "0.13"
+
+[build-dependencies]
+napi-build = "2"
+
+[profile.release]
+lto = true
+strip = "symbols"

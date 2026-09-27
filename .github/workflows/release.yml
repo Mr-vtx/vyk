@@ -1,0 +1,103 @@
+name: Release
+
+# Builds the native addon on real Linux, Windows, and macOS (x64 + arm64)
+# runners, sanity-checks that each one actually loads, then publishes a
+# single npm package containing all four binaries.
+#
+# Trigger: push a tag like v0.2.0, or run manually from the Actions tab.
+
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            target: x86_64-unknown-linux-gnu
+            artifact: imageforge.linux-x64-gnu.node
+          - os: windows-latest
+            target: x86_64-pc-windows-msvc
+            artifact: imageforge.win32-x64-msvc.node
+          - os: macos-13 # Intel runner
+            target: x86_64-apple-darwin
+            artifact: imageforge.darwin-x64.node
+          - os: macos-latest # Apple Silicon runner
+            target: aarch64-apple-darwin
+            artifact: imageforge.darwin-arm64.node
+
+    runs-on: ${{ matrix.os }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.target }}
+
+      # rav1e (the AVIF fallback encoder) needs nasm to build on every OS
+      - name: Install nasm
+        uses: ilammy/setup-nasm@v1
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Build native addon (release)
+        run: npx napi build --platform --release --target ${{ matrix.target }}
+
+      - name: Verify the binary actually loads on this OS
+        shell: bash
+        run: node -e "require('./index.js'); console.log('native binding for ${{ matrix.target }} loaded OK')"
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Unit tests
+        run: npm run test:unit
+
+      - name: Upload native binary
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.artifact }}
+          path: ${{ matrix.artifact }}
+          if-no-files-found: error
+
+  publish:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          registry-url: "https://registry.npmjs.org"
+
+      - name: Download all native binaries
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+
+      - name: Place binaries at package root
+        run: |
+          find artifacts -name "*.node" -exec cp {} . \;
+          ls -la *.node
+
+      - name: Install deps and build TS
+        run: |
+          npm install
+          npm run build:ts
+
+      - name: Publish to npm
+        run: npm publish --access public
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}

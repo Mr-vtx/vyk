@@ -1,0 +1,46 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+
+    runs-on: ${{ matrix.os }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - name: Install nasm (required to build rav1e for the AVIF fallback)
+        uses: ilammy/setup-nasm@v1
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Build native addon (debug)
+        run: npm run build:native:debug
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Unit tests
+        run: npm run test:unit
+
+  # Cross-compiling for additional targets (linux-musl, arm64, etc.) needs
+  # extra toolchains per target — see https://napi.rs/docs/ for the
+  # zig/cross-based setup once you're ready to publish multi-platform
+  # binaries. This workflow only proves the build + tests pass on each
+  # native host OS.

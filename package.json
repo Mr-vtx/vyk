@@ -1,0 +1,46 @@
+{
+  "name": "imageforge",
+  "version": "0.1.0",
+  "description": "Optimize website images (PNG/JPG) to WebP. A Rust-powered CLI — no Rust required to install.",
+  "license": "MIT",
+  "keywords": ["images", "webp", "optimize", "compression", "cli", "performance"],
+  "bin": {
+    "imageforge": "dist/cli.js"
+  },
+  "main": "index.js",
+  "types": "index.d.ts",
+  "files": [
+    "dist",
+    "!dist/*.test.js",
+    "!dist/*.test.d.ts",
+    "index.js",
+    "index.d.ts",
+    "*.node"
+  ],
+  "napi": {
+    "binaryName": "imageforge",
+    "targets": [
+      "x86_64-unknown-linux-gnu",
+      "x86_64-pc-windows-msvc",
+      "x86_64-apple-darwin",
+      "aarch64-apple-darwin"
+    ]
+  },
+  "scripts": {
+    "build:native": "napi build --platform --release",
+    "build:native:debug": "napi build --platform",
+    "build:ts": "tsc",
+    "build": "npm run build:native && npm run build:ts",
+    "typecheck": "tsc --noEmit",
+    "test:unit": "npm run build:ts && node dist/scanner.test.js && node dist/cache.test.js && node dist/git.test.js && node dist/rewrite.test.js && node dist/gitignore.test.js",
+    "prepublishOnly": "npm run build"
+  },
+  "devDependencies": {
+    "@napi-rs/cli": "^3.0.0",
+    "@types/node": "^22.0.0",
+    "typescript": "^5.6.0"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}
