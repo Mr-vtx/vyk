@@ -138,11 +138,7 @@ fn optimize_image_inner(
         };
         encoded.to_vec()
     } else {
-        // WebP can't hold this image (>16,383px on a side) — fall back to
-        // AVIF, whose AV1 codec supports much larger frames. Slower to
-        // encode, but still lands as a real optimized output instead of
-        // just giving up on this file.
-        encode_avif(rgba.as_raw(), width, height, quality).map_err(|e| {
+         encode_avif(rgba.as_raw(), width, height, quality).map_err(|e| {
             napi::Error::from_reason(format!("Failed to AVIF-encode {input_path}: {e}"))
         })?
     };

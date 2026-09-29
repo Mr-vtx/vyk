@@ -97,7 +97,7 @@ jobs:
           npm install
           npm run build:ts
 
-      - name: Publish to npm
-        run: npm publish --access public
+      - name: Stage the release
+        run: npm stage publish --access public
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}

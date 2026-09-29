@@ -1,11 +1,5 @@
-import type { OptimizeResult } from './types';
+import type { OptimizeResult } from "./types";
 
-/**
- * An OptimizeResult, plus whether it came from cache instead of a real
- * encode, and — if the encode/decode itself threw — the error message.
- * `error` entries are always `skipped: true` too, so any code that only
- * checks `skipped` still treats them safely as "nothing was written".
- */
 export type CliResult = OptimizeResult & { cached: boolean; error?: string };
 
 export interface ReportOptions {
@@ -71,53 +65,59 @@ function tally(results: CliResult[]): Tally {
   return t;
 }
 
-export function printReport(results: CliResult[], options: ReportOptions = {}): void {
+export function printReport(
+  results: CliResult[],
+  options: ReportOptions = {},
+): void {
   const dryRun = options.dryRun ?? false;
 
-  console.log('');
+  console.log("");
   console.log(
-    color.bold('Vysk optimization report') +
-      (dryRun ? color.magenta('  (dry run — nothing was written)') : '')
+    color.bold("Vysk optimization report") +
+      (dryRun ? color.magenta("  (dry run — nothing was written)") : ""),
   );
-  console.log('');
+  console.log("");
 
   for (const result of results) {
     if (result.error) {
-      console.log(`${color.red('error')} ${result.inputPath}  ${color.dim(result.error)}`);
+      console.log(
+        `${color.red("error")} ${result.inputPath}  ${color.dim(result.error)}`,
+      );
       continue;
     }
 
     if (result.cached) {
       console.log(
-        `${color.cyan('cache')} ${result.inputPath}  ${color.dim('unchanged since last run')}`
+        `${color.cyan("cache")} ${result.inputPath}  ${color.dim("unchanged since last run")}`,
       );
       continue;
     }
 
     if (result.skipped) {
       console.log(
-        `${color.yellow('skip')}  ${result.inputPath}  ${color.dim(
-          result.reason ?? 'not smaller'
-        )}`
+        `${color.yellow("skip")}  ${result.inputPath}  ${color.dim(
+          result.reason ?? "not smaller",
+        )}`,
       );
       continue;
     }
 
     const saved = result.originalSize - result.outputSize;
-    const savedPct = result.originalSize > 0 ? (saved / result.originalSize) * 100 : 0;
-    const label = dryRun ? color.magenta('would') : color.green('done');
+    const savedPct =
+      result.originalSize > 0 ? (saved / result.originalSize) * 100 : 0;
+    const label = dryRun ? color.magenta("would") : color.green("done");
 
     console.log(
       `${label}  ${result.inputPath} -> ${result.outputPath}  ` +
         `${formatBytes(result.originalSize)} -> ${formatBytes(result.outputSize)} ` +
-        color.green(`(-${savedPct.toFixed(0)}%)`)
+        color.green(`(-${savedPct.toFixed(0)}%)`),
     );
   }
 
   const t = tally(results);
 
-  console.log('');
-  const optimizedLabel = dryRun ? 'would optimize' : 'optimized';
+  console.log("");
+  const optimizedLabel = dryRun ? "would optimize" : "optimized";
   let summaryLine = `${t.optimizedCount} ${optimizedLabel}, ${t.cachedCount} cached, ${t.skippedCount} skipped`;
   if (t.erroredCount > 0) {
     summaryLine += `, ${color.red(`${t.erroredCount} errored`)}`;
@@ -126,20 +126,18 @@ export function printReport(results: CliResult[], options: ReportOptions = {}): 
 
   if ((t.optimizedCount > 0 || t.cachedCount > 0) && t.totalScannedBytes > 0) {
     const overallPct = (t.bytesSaved / t.totalScannedBytes) * 100;
-    const savedLabel = dryRun ? 'Would save' : 'Total saved';
+    const savedLabel = dryRun ? "Would save" : "Total saved";
     console.log(
-      `${savedLabel}: ${formatBytes(t.bytesSaved)} (${overallPct.toFixed(1)}% of scanned assets)`
+      `${savedLabel}: ${formatBytes(t.bytesSaved)} (${overallPct.toFixed(1)}% of scanned assets)`,
     );
   }
-  console.log('');
+  console.log("");
 }
 
-/**
- * Same data as `printReport`, as a single JSON object on stdout instead of
- * colored lines — for CI steps or agents that want to parse the result
- * rather than scrape terminal output.
- */
-export function printJsonReport(results: CliResult[], options: ReportOptions = {}): void {
+export function printJsonReport(
+  results: CliResult[],
+  options: ReportOptions = {},
+): void {
   const dryRun = options.dryRun ?? false;
   const t = tally(results);
 
@@ -158,7 +156,7 @@ export function printJsonReport(results: CliResult[], options: ReportOptions = {
         results,
       },
       null,
-      2
-    )
+      2,
+    ),
   );
 }

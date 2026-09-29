@@ -1,35 +1,38 @@
 #!/usr/bin/env node
-import { relative, resolve } from 'node:path';
-import { findImages, findProjectRoot } from './scanner';
-import { optimizeImage } from './native';
-import { printReport, printJsonReport, formatBytes, color, type CliResult } from './report';
-import { loadConfig } from './config';
-import { ImageCache } from './cache';
-import { checkGitStatus } from './git';
-import { ensureGitignored } from './gitignore';
+import { relative, resolve } from "node:path";
+import { findImages, findProjectRoot } from "./scanner";
+import { optimizeImage } from "./native";
+import {
+  printReport,
+  printJsonReport,
+  formatBytes,
+  color,
+  type CliResult,
+} from "./report";
+import { loadConfig } from "./config";
+import { ImageCache } from "./cache";
+import { checkGitStatus } from "./git";
+import { ensureGitignored } from "./gitignore";
 import {
   loadConversions,
   findSourceFiles,
   planFileEdits,
   applyEditPlans,
   type FileEditPlan,
-} from './rewrite';
-import { findUnusedOriginals, applyClean } from './clean';
-import { listBackups, planRestore, applyRestore } from './undo';
-import { runDoctorChecks } from './doctor';
-import { confirm } from './prompt';
+} from "./rewrite";
+import { findUnusedOriginals, applyClean } from "./clean";
+import { listBackups, planRestore, applyRestore } from "./undo";
+import { runDoctorChecks } from "./doctor";
+import { confirm } from "./prompt";
 
-function resolveScanDirs(projectRoot: string, paths: string[] | undefined): string[] {
-  const configured = paths && paths.length > 0 ? paths : ['public'];
+function resolveScanDirs(
+  projectRoot: string,
+  paths: string[] | undefined,
+): string[] {
+  const configured = paths && paths.length > 0 ? paths : ["public"];
   return configured.map((p) => resolve(projectRoot, p));
 }
 
-/**
- * Shared by `rewrite`, `clean`, and `undo` — every command that touches
- * source files (or deletes originals) refuses to run on a dirty or
- * missing git tree unless `--force` is passed. Prints the reason and sets
- * a failing exit code when it refuses.
- */
 function requireCleanGitTree(projectRoot: string, force: boolean): boolean {
   const gitStatus = checkGitStatus(projectRoot);
   if (gitStatus.isClean || force) return true;
@@ -37,21 +40,17 @@ function requireCleanGitTree(projectRoot: string, force: boolean): boolean {
   if (!gitStatus.isRepo) {
     console.error(
       "Refusing to run: this project isn't a git repository (or git isn't available), " +
-        'so there is no safe rollback point. Re-run with --force to proceed anyway (not recommended).'
+        "so there is no safe rollback point. Re-run with --force to proceed anyway (not recommended).",
     );
   } else {
     console.error(
-      'Refusing to run: you have uncommitted changes. Commit or stash them first, ' +
-        'or re-run with --force to proceed anyway (not recommended).'
+      "Refusing to run: you have uncommitted changes. Commit or stash them first, " +
+        "or re-run with --force to proceed anyway (not recommended).",
     );
   }
   process.exitCode = 1;
   return false;
 }
-
-// ---------------------------------------------------------------------------
-// `vysk -c` — optimize images (Phase 1/2)
-// ---------------------------------------------------------------------------
 
 interface CompressOptions {
   quality?: number;
@@ -62,21 +61,25 @@ interface CompressOptions {
 }
 
 function parseCompressArgs(argv: string[]): CompressOptions {
-  const options: CompressOptions = { useCache: true, dryRun: false, json: false };
+  const options: CompressOptions = {
+    useCache: true,
+    dryRun: false,
+    json: false,
+  };
 
   for (let i = 0; i < argv.length; i += 1) {
     const arg = argv[i];
-    if (arg === '-q' || arg === '--quality') {
+    if (arg === "-q" || arg === "--quality") {
       const value = Number(argv[i + 1]);
       if (!Number.isNaN(value)) options.quality = value;
       i += 1;
-    } else if (arg === '--lossless') {
+    } else if (arg === "--lossless") {
       options.lossless = true;
-    } else if (arg === '--no-cache') {
+    } else if (arg === "--no-cache") {
       options.useCache = false;
-    } else if (arg === '--dry-run') {
+    } else if (arg === "--dry-run") {
       options.dryRun = true;
-    } else if (arg === '--json') {
+    } else if (arg === "--json") {
       options.json = true;
     }
   }
@@ -117,12 +120,12 @@ Caching:
 }
 
 async function runCompress(argv: string[]): Promise<void> {
-  if (argv.includes('-h') || argv.includes('--help')) {
+  if (argv.includes("-h") || argv.includes("--help")) {
     printCompressHelp();
     return;
   }
 
-  if (!argv.includes('-c') && !argv.includes('--compress')) {
+  if (!argv.includes("-c") && !argv.includes("--compress")) {
     printCompressHelp();
     process.exitCode = 1;
     return;
@@ -141,7 +144,7 @@ async function runCompress(argv: string[]): Promise<void> {
 
   const config = loadConfig(projectRoot);
   const gitignoreResult = await ensureGitignored(projectRoot);
-  if (gitignoreResult !== 'already-present' && !cliOptions.json) {
+  if (gitignoreResult !== "already-present" && !cliOptions.json) {
     console.log(`(${gitignoreResult} .gitignore entry for .vysk/)`);
   }
   const quality = cliOptions.quality ?? config.quality ?? 82;
@@ -160,7 +163,7 @@ async function runCompress(argv: string[]): Promise<void> {
     if (cliOptions.json) {
       printJsonReport([], { dryRun: cliOptions.dryRun });
     } else {
-      console.log(`No PNG/JPG/JPEG images found under: ${scanDirs.join(', ')}`);
+      console.log(`No PNG/JPG/JPEG images found under: ${scanDirs.join(", ")}`);
     }
     return;
   }
@@ -170,7 +173,9 @@ async function runCompress(argv: string[]): Promise<void> {
 
   for (const imagePath of images) {
     const hash = await cache.hashFile(imagePath);
-    const cached = cliOptions.useCache ? cache.get(imagePath, hash, quality, lossless) : undefined;
+    const cached = cliOptions.useCache
+      ? cache.get(imagePath, hash, quality, lossless)
+      : undefined;
 
     if (cached) {
       results.push({
@@ -185,7 +190,11 @@ async function runCompress(argv: string[]): Promise<void> {
     }
 
     try {
-      const result = optimizeImage(imagePath, { quality, lossless, dryRun: cliOptions.dryRun });
+      const result = optimizeImage(imagePath, {
+        quality,
+        lossless,
+        dryRun: cliOptions.dryRun,
+      });
       results.push({ ...result, cached: false });
 
       if (!result.skipped && !cliOptions.dryRun) {
@@ -205,11 +214,11 @@ async function runCompress(argv: string[]): Promise<void> {
       }
       results.push({
         inputPath: imagePath,
-        outputPath: '',
+        outputPath: "",
         originalSize: 0,
         outputSize: 0,
         skipped: true,
-        reason: 'error',
+        reason: "error",
         cached: false,
         error: message,
       });
@@ -230,13 +239,6 @@ async function runCompress(argv: string[]): Promise<void> {
     process.exitCode = 1;
   }
 }
-
-// ---------------------------------------------------------------------------
-// `vysk rewrite` — Phase 3: rewrite source references to point at the
-// optimized outputs. The only vysk command that touches your actual
-// source code. Always shows the full plan and asks for explicit
-// confirmation before writing anything.
-// ---------------------------------------------------------------------------
 
 function printRewriteHelp(): void {
   console.log(`
@@ -269,12 +271,12 @@ Safety:
 }
 
 async function runRewrite(argv: string[]): Promise<void> {
-  if (argv.includes('-h') || argv.includes('--help')) {
+  if (argv.includes("-h") || argv.includes("--help")) {
     printRewriteHelp();
     return;
   }
 
-  const force = argv.includes('--force');
+  const force = argv.includes("--force");
 
   let projectRoot: string;
   try {
@@ -289,14 +291,14 @@ async function runRewrite(argv: string[]): Promise<void> {
 
   const config = loadConfig(projectRoot);
   const gitignoreResult = await ensureGitignored(projectRoot);
-  if (gitignoreResult !== 'already-present') {
+  if (gitignoreResult !== "already-present") {
     console.log(`(${gitignoreResult} .gitignore entry for .vysk/)`);
   }
   const scanDirs = resolveScanDirs(projectRoot, config.paths);
 
   const conversions = await loadConversions(projectRoot, scanDirs);
   if (conversions.length === 0) {
-    console.log('No conversions recorded yet — run `vysk -c` first.');
+    console.log("No conversions recorded yet — run `vysk -c` first.");
     return;
   }
 
@@ -308,43 +310,45 @@ async function runRewrite(argv: string[]): Promise<void> {
   }
 
   if (plans.length === 0) {
-    console.log('No matching references found in scanned source files.');
+    console.log("No matching references found in scanned source files.");
     return;
   }
 
-  console.log('');
-  console.log('The following changes would be made:');
-  console.log('');
+  console.log("");
+  console.log("The following changes would be made:");
+  console.log("");
   let totalReplacements = 0;
   for (const plan of plans) {
     console.log(relative(projectRoot, plan.filePath));
     for (const edit of plan.edits) {
       totalReplacements += edit.matchCount;
-      console.log(`  ${edit.oldPath} -> ${edit.newPath}  (${edit.matchCount}x)`);
+      console.log(
+        `  ${edit.oldPath} -> ${edit.newPath}  (${edit.matchCount}x)`,
+      );
     }
   }
-  console.log('');
-  console.log(`${totalReplacements} replacement(s) across ${plans.length} file(s).`);
-  console.log('');
+  console.log("");
+  console.log(
+    `${totalReplacements} replacement(s) across ${plans.length} file(s).`,
+  );
+  console.log("");
 
-  const proceed = await confirm(`Apply these changes to ${plans.length} file(s)?`);
+  const proceed = await confirm(
+    `Apply these changes to ${plans.length} file(s)?`,
+  );
   if (!proceed) {
-    console.log('No changes made.');
+    console.log("No changes made.");
     return;
   }
 
   const result = await applyEditPlans(projectRoot, plans);
 
-  console.log('');
-  console.log(`Applied ${result.totalReplacements} replacement(s) across ${result.filesChanged} file(s).`);
+  console.log("");
+  console.log(
+    `Applied ${result.totalReplacements} replacement(s) across ${result.filesChanged} file(s).`,
+  );
   console.log(`Backup of the originals saved to: ${result.backupDir}`);
 }
-
-// ---------------------------------------------------------------------------
-// `vysk clean` — Phase 3: remove originals that are no longer
-// referenced after a rewrite. Reuses rewrite.ts's exact matching rules so
-// the two commands can't disagree about what "referenced" means.
-// ---------------------------------------------------------------------------
 
 function printCleanHelp(): void {
   console.log(`
@@ -377,13 +381,13 @@ Safety:
 }
 
 async function runClean(argv: string[]): Promise<void> {
-  if (argv.includes('-h') || argv.includes('--help')) {
+  if (argv.includes("-h") || argv.includes("--help")) {
     printCleanHelp();
     return;
   }
 
-  const force = argv.includes('--force');
-  const dryRun = argv.includes('--dry-run');
+  const force = argv.includes("--force");
+  const dryRun = argv.includes("--dry-run");
 
   let projectRoot: string;
   try {
@@ -401,54 +405,54 @@ async function runClean(argv: string[]): Promise<void> {
 
   const candidates = await findUnusedOriginals(projectRoot, scanDirs);
   if (candidates.length === 0) {
-    console.log('No unused originals found.');
+    console.log("No unused originals found.");
     return;
   }
 
-  console.log('');
-  console.log('These originals look unused (no reference found in scanned source):');
-  console.log('');
+  console.log("");
+  console.log(
+    "These originals look unused (no reference found in scanned source):",
+  );
+  console.log("");
   let totalBytes = 0;
   for (const candidate of candidates) {
     totalBytes += candidate.originalSize;
     console.log(
       `  ${relative(projectRoot, candidate.absoluteSourcePath)}  ${color.dim(
-        `(${formatBytes(candidate.originalSize)})`
-      )}`
+        `(${formatBytes(candidate.originalSize)})`,
+      )}`,
     );
   }
-  console.log('');
-  console.log(`${candidates.length} file(s), ${formatBytes(totalBytes)} total.`);
-  console.log('');
+  console.log("");
+  console.log(
+    `${candidates.length} file(s), ${formatBytes(totalBytes)} total.`,
+  );
+  console.log("");
   console.log(
     color.dim(
       "Reminder: text-based reference matching, same as 'vysk rewrite' — a " +
-        "dynamic/computed path won't be caught. Review the list above before confirming."
-    )
+        "dynamic/computed path won't be caught. Review the list above before confirming.",
+    ),
   );
-  console.log('');
+  console.log("");
 
   if (dryRun) {
-    console.log(color.magenta('(dry run — nothing was deleted)'));
+    console.log(color.magenta("(dry run — nothing was deleted)"));
     return;
   }
 
   const proceed = await confirm(`Delete these ${candidates.length} file(s)?`);
   if (!proceed) {
-    console.log('No changes made.');
+    console.log("No changes made.");
     return;
   }
 
   const result = await applyClean(candidates);
-  console.log('');
-  console.log(`Removed ${result.filesRemoved} file(s), freed ${formatBytes(result.bytesFreed)}.`);
+  console.log("");
+  console.log(
+    `Removed ${result.filesRemoved} file(s), freed ${formatBytes(result.bytesFreed)}.`,
+  );
 }
-
-// ---------------------------------------------------------------------------
-// `vysk undo` — restore source files from an `vysk rewrite`
-// backup. The mirror image of `rewrite`: same git-clean requirement, same
-// "show the plan, ask for confirmation" shape.
-// ---------------------------------------------------------------------------
 
 function printUndoHelp(): void {
   console.log(`
@@ -468,7 +472,7 @@ Options:
 }
 
 async function runUndo(argv: string[]): Promise<void> {
-  if (argv.includes('-h') || argv.includes('--help')) {
+  if (argv.includes("-h") || argv.includes("--help")) {
     printUndoHelp();
     return;
   }
@@ -484,30 +488,30 @@ async function runUndo(argv: string[]): Promise<void> {
 
   const backups = await listBackups(projectRoot);
 
-  if (argv.includes('--list')) {
+  if (argv.includes("--list")) {
     if (backups.length === 0) {
-      console.log('No rewrite backups found.');
+      console.log("No rewrite backups found.");
       return;
     }
-    console.log('Available backups (newest first):');
+    console.log("Available backups (newest first):");
     for (const backup of backups) console.log(`  ${backup.timestamp}`);
     return;
   }
 
   if (backups.length === 0) {
-    console.log('No rewrite backups found — nothing to undo.');
+    console.log("No rewrite backups found — nothing to undo.");
     return;
   }
 
-  const force = argv.includes('--force');
-  const requestedTimestamp = argv.find((a) => !a.startsWith('-'));
+  const force = argv.includes("--force");
+  const requestedTimestamp = argv.find((a) => !a.startsWith("-"));
   const target = requestedTimestamp
     ? backups.find((b) => b.timestamp === requestedTimestamp)
     : backups[0];
 
   if (!target) {
     console.error(
-      `No backup found matching "${requestedTimestamp}". Run \`vysk undo --list\` to see available backups.`
+      `No backup found matching "${requestedTimestamp}". Run \`vysk undo --list\` to see available backups.`,
     );
     process.exitCode = 1;
     return;
@@ -517,32 +521,31 @@ async function runUndo(argv: string[]): Promise<void> {
 
   const plan = await planRestore(projectRoot, target);
   if (plan.length === 0) {
-    console.log('That backup is empty — nothing to restore.');
+    console.log("That backup is empty — nothing to restore.");
     return;
   }
 
-  console.log('');
+  console.log("");
   console.log(`Restoring backup from ${target.timestamp}:`);
   for (const entry of plan) {
     console.log(`  ${relative(projectRoot, entry.targetPath)}`);
   }
-  console.log('');
+  console.log("");
 
-  const proceed = await confirm(`Overwrite ${plan.length} file(s) with this backup?`);
+  const proceed = await confirm(
+    `Overwrite ${plan.length} file(s) with this backup?`,
+  );
   if (!proceed) {
-    console.log('No changes made.');
+    console.log("No changes made.");
     return;
   }
 
   const result = await applyRestore(plan);
-  console.log('');
-  console.log(`Restored ${result.filesRestored} file(s) from ${target.timestamp}.`);
+  console.log("");
+  console.log(
+    `Restored ${result.filesRestored} file(s) from ${target.timestamp}.`,
+  );
 }
-
-// ---------------------------------------------------------------------------
-// `vysk doctor` — environment diagnostics. No writes, no confirmation
-// needed — safe to run any time, especially right after install.
-// ---------------------------------------------------------------------------
 
 function printDoctorHelp(): void {
   console.log(`
@@ -561,50 +564,52 @@ Checks:
 }
 
 async function runDoctor(argv: string[]): Promise<void> {
-  if (argv.includes('-h') || argv.includes('--help')) {
+  if (argv.includes("-h") || argv.includes("--help")) {
     printDoctorHelp();
     return;
   }
 
   const checks = runDoctorChecks();
 
-  console.log('');
-  console.log(color.bold('Vysk doctor'));
-  console.log('');
+  console.log("");
+  console.log(color.bold("Vysk doctor"));
+  console.log("");
 
   let hasFail = false;
   for (const check of checks) {
     const icon =
-      check.status === 'ok' ? color.green('✓') : check.status === 'warn' ? color.yellow('!') : color.red('✗');
+      check.status === "ok"
+        ? color.green("✓")
+        : check.status === "warn"
+          ? color.yellow("!")
+          : color.red("✗");
     console.log(`${icon} ${check.name}: ${check.message}`);
-    if (check.status === 'fail') hasFail = true;
+    if (check.status === "fail") hasFail = true;
   }
-  console.log('');
+  console.log("");
 
   if (hasFail) {
     process.exitCode = 1;
   }
 }
 
-// ---------------------------------------------------------------------------
-
 async function main(): Promise<void> {
   const argv = process.argv.slice(2);
   const [sub, ...rest] = argv;
 
-  if (sub === 'rewrite') {
+  if (sub === "rewrite") {
     await runRewrite(rest);
     return;
   }
-  if (sub === 'clean') {
+  if (sub === "clean") {
     await runClean(rest);
     return;
   }
-  if (sub === 'undo') {
+  if (sub === "undo") {
     await runUndo(rest);
     return;
   }
-  if (sub === 'doctor') {
+  if (sub === "doctor") {
     await runDoctor(rest);
     return;
   }

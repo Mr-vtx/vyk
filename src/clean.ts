@@ -1,13 +1,13 @@
-import { existsSync, statSync } from 'node:fs';
-import { readFile, unlink } from 'node:fs/promises';
-import { dirname, resolve } from 'node:path';
+import { existsSync, statSync } from "node:fs";
+import { readFile, unlink } from "node:fs/promises";
+import { dirname, resolve } from "node:path";
 import {
   loadConversions,
   findSourceFiles,
   escapeRegExp,
   IMPORT_SPECIFIER_PATTERN,
   type ConversionEntry,
-} from './rewrite';
+} from "./rewrite";
 
 export interface CleanCandidate {
   absoluteSourcePath: string;
@@ -15,20 +15,15 @@ export interface CleanCandidate {
   originalSize: number;
 }
 
-/**
- * True if `content` (from `filePath`) still references `conversion`'s
- * *original* path — same two matching rules as `rewrite.ts`'s
- * `planFileEdits` (web-root string literals, then local import/require
- * specifiers), reused directly rather than re-implemented so the two
- * commands can never quietly disagree about what counts as "referenced".
- */
 function fileReferencesConversion(
   content: string,
   filePath: string,
-  conversion: ConversionEntry
+  conversion: ConversionEntry,
 ): boolean {
   if (conversion.webRootPath) {
-    const pattern = new RegExp(`${escapeRegExp(conversion.webRootPath)}(?![\\w.-])`);
+    const pattern = new RegExp(
+      `${escapeRegExp(conversion.webRootPath)}(?![\\w.-])`,
+    );
     if (pattern.test(content)) return true;
   }
 
@@ -36,27 +31,18 @@ function fileReferencesConversion(
     const fileDir = dirname(filePath);
     for (const match of content.matchAll(IMPORT_SPECIFIER_PATTERN)) {
       const specifier = match[1];
-      if (!specifier.startsWith('.')) continue;
-      if (resolve(fileDir, specifier) === conversion.absoluteSourcePath) return true;
+      if (!specifier.startsWith(".")) continue;
+      if (resolve(fileDir, specifier) === conversion.absoluteSourcePath)
+        return true;
     }
   }
 
   return false;
 }
 
-/**
- * Finds originals with a recorded .webp/.avif conversion that no longer
- * appear to be referenced anywhere in scanned source files.
- *
- * Important: this is the same text-matching, not an AST-aware codemod, as
- * `vysk rewrite` — a computed/dynamic path (e.g. `` `/images/${slug}.jpg` ``)
- * won't be caught. "Not found" here is evidence of safety, not proof,
- * which is why the CLI still shows the full plan, asks for confirmation,
- * and requires a clean git tree before deleting anything.
- */
 export async function findUnusedOriginals(
   projectRoot: string,
-  scanDirs: string[]
+  scanDirs: string[],
 ): Promise<CleanCandidate[]> {
   const conversions = await loadConversions(projectRoot, scanDirs);
   if (conversions.length === 0) return [];
@@ -65,11 +51,8 @@ export async function findUnusedOriginals(
   const fileContents = new Map<string, string>();
   for (const filePath of sourceFiles) {
     try {
-      fileContents.set(filePath, await readFile(filePath, 'utf8'));
-    } catch {
-      // Unreadable file (permissions, race with another process, etc.) —
-      // skip it; it just can't vouch for or against this original.
-    }
+      fileContents.set(filePath, await readFile(filePath, "utf8"));
+    } catch {}
   }
 
   const candidates: CleanCandidate[] = [];
@@ -101,7 +84,9 @@ export interface CleanApplyResult {
   bytesFreed: number;
 }
 
-export async function applyClean(candidates: CleanCandidate[]): Promise<CleanApplyResult> {
+export async function applyClean(
+  candidates: CleanCandidate[],
+): Promise<CleanApplyResult> {
   let bytesFreed = 0;
   for (const candidate of candidates) {
     bytesFreed += candidate.originalSize;

@@ -1,8 +1,8 @@
 # Vysk
 
 Optimize website images so pages load faster and use less bandwidth.
-Scans a project for PNG/JPG/JPEG and converts them to WebP — smaller,
-same quality, original files untouched.
+Scans a project for PNG/JPG/JPEG and converts them to WebP - smaller,
+tries to maintain same quality, original files untouched.
 
 ```bash
 npm install -D vysk
@@ -28,7 +28,7 @@ public/
 └── banner.webp
 ```
 
-No Rust required to install — the heavy lifting happens in a native
+No Rust required to install - the heavy lifting happens in a native
 addon shipped as a prebuilt binary (via [napi-rs](https://napi.rs)),
 the same distribution model `sharp` and `esbuild` use.
 
@@ -138,10 +138,13 @@ git push --tags
 Pushing a version tag triggers `.github/workflows/release.yml`, which
 builds the native addon on real Linux, Windows, and macOS (x64 + arm64)
 runners, verifies each one actually loads before continuing, then
-publishes a single package containing all four binaries. You can also
-trigger it manually from the Actions tab (`workflow_dispatch`) without
-pushing a tag. Requires an `NPM_TOKEN` secret in the repo's Settings →
-Secrets and variables → Actions.
+**stages** a single package containing all four binaries (`npm stage
+publish` — the repo's npm token is scoped to stage-only, so it can't
+publish directly). A maintainer still has to go to **Staged Packages**
+on npmjs.com and promote it with 2FA before it actually goes live. You
+can also trigger the workflow manually from the Actions tab
+(`workflow_dispatch`) without pushing a tag. Requires an `NPM_TOKEN`
+secret in the repo's Settings → Secrets and variables → Actions.
 
 `.github/workflows/ci.yml` is separate — it just builds and tests on
 each OS for every push/PR, as a sanity check. It doesn't publish
