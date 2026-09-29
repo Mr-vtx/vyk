@@ -27,7 +27,7 @@ interface CacheFileShape {
 
 /**
  * Builds the list of known source->output conversions from
- * `.imageforge/cache.json` — the cache is already the source of truth for
+ * `.vysk/cache.json` — the cache is already the source of truth for
  * "which files were converted, and to what", so rewriting reuses it
  * instead of re-deriving anything.
  */
@@ -35,7 +35,7 @@ export async function loadConversions(
   projectRoot: string,
   scanDirs: string[]
 ): Promise<ConversionEntry[]> {
-  const cachePath = join(projectRoot, '.imageforge', 'cache.json');
+  const cachePath = join(projectRoot, '.vysk', 'cache.json');
   if (!existsSync(cachePath)) {
     return [];
   }
@@ -118,9 +118,13 @@ export interface FileEditPlan {
   edits: PlannedEdit[];
 }
 
-const IMPORT_SPECIFIER_PATTERN = /(?:from\s+|require\()\s*['"`]([^'"`]+\.(?:png|jpe?g))['"`]/gi;
+// Exported so `clean.ts` can reuse the exact same reference-matching rules
+// when deciding whether an original is safe to delete, instead of
+// maintaining a second, potentially-drifting copy of this logic.
+export const IMPORT_SPECIFIER_PATTERN =
+  /(?:from\s+|require\()\s*['"`]([^'"`]+\.(?:png|jpe?g))['"`]/gi;
 
-function escapeRegExp(text: string): string {
+export function escapeRegExp(text: string): string {
   return text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
 
@@ -198,7 +202,7 @@ export interface ApplyResult {
 
 /**
  * Actually applies a set of previously-planned edits: backs up each
- * file's original content under `.imageforge/rewrite-backups/<timestamp>/`
+ * file's original content under `.vysk/rewrite-backups/<timestamp>/`
  * (mirroring its path relative to the project root), then writes the new
  * content in place. Pure mechanics — the decision to call this at all
  * (git-clean check, user confirmation) lives in the CLI layer, not here,
@@ -209,7 +213,7 @@ export async function applyEditPlans(
   plans: FileEditPlan[],
   timestamp: string = new Date().toISOString().replace(/[:.]/g, '-')
 ): Promise<ApplyResult> {
-  const backupDir = join(projectRoot, '.imageforge', 'rewrite-backups', timestamp);
+  const backupDir = join(projectRoot, '.vysk', 'rewrite-backups', timestamp);
   let totalReplacements = 0;
 
   for (const plan of plans) {

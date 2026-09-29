@@ -1,22 +1,14 @@
-import { existsSync } from 'node:fs';
-import { join } from 'node:path';
+import { existsSync } from "node:fs";
+import { join } from "node:path";
 
-export interface ImageForgeConfig {
+export interface VyskConfig {
   quality?: number;
   lossless?: boolean;
-  /** Directories to scan for images, relative to the project root. Default: ['public']. */
   paths?: string[];
 }
 
-/**
- * Loads `imageforge.config.js` from the project root, if present.
- * CommonJS (`module.exports = {...}`), matching the convention of
- * `next.config.js` / `tailwind.config.js` in the projects this tool
- * targets. Returns an empty config (falling back to CLI flags and
- * built-in defaults) if the file doesn't exist or fails to load.
- */
-export function loadConfig(projectRoot: string): ImageForgeConfig {
-  const configPath = join(projectRoot, 'imageforge.config.js');
+export function loadConfig(projectRoot: string): VyskConfig {
+  const configPath = join(projectRoot, "vysk.config.js");
   if (!existsSync(configPath)) {
     return {};
   }
@@ -24,10 +16,12 @@ export function loadConfig(projectRoot: string): ImageForgeConfig {
   try {
     // eslint-disable-next-line @typescript-eslint/no-var-requires
     const loaded = require(configPath);
-    return (loaded && loaded.default ? loaded.default : loaded) as ImageForgeConfig;
+    return (
+      loaded && loaded.default ? loaded.default : loaded
+    ) as VyskConfig;
   } catch (error) {
     console.error(
-      `Warning: failed to load imageforge.config.js, using defaults instead: ${(error as Error).message}`
+      `Warning: failed to load vysk.config.js, using defaults instead: ${(error as Error).message}`,
     );
     return {};
   }

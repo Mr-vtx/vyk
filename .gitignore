@@ -14,7 +14,7 @@ npm/
 target/
 
 # Runtime artifacts from actually running the CLI on a project
-.imageforge/
+.vysk/
 
 *.tgz
 .DS_Store

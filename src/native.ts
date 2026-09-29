@@ -22,7 +22,7 @@ function loadNative(): NativeBinding {
       cached = require('../index.js') as NativeBinding;
     } catch (error) {
       throw new Error(
-        "ImageForge's native addon isn't built yet. Run `npm run build:native` " +
+        "Vysk's native addon isn't built yet. Run `npm run build:native` " +
           `(or \`npm run build\`) first.\nOriginal error: ${(error as Error).message}`
       );
     }
@@ -32,4 +32,14 @@ function loadNative(): NativeBinding {
 
 export function optimizeImage(inputPath: string, options?: OptimizeOptions): OptimizeResult {
   return loadNative().optimizeImage(inputPath, options);
+}
+
+/** Used by `vysk doctor` — attempts the same load as a real run, without needing an image. */
+export function checkNativeBinding(): { ok: boolean; message: string } {
+  try {
+    loadNative();
+    return { ok: true, message: 'native addon loaded successfully' };
+  } catch (error) {
+    return { ok: false, message: (error as Error).message };
+  }
 }

@@ -1,12 +1,12 @@
-# ImageForge
+# Vysk
 
 Optimize website images so pages load faster and use less bandwidth.
 Scans a project for PNG/JPG/JPEG and converts them to WebP — smaller,
 same quality, original files untouched.
 
 ```bash
-npm install -D imageforge
-npx imageforge -c
+npm install -D vysk
+npx vysk -c
 ```
 
 ```
@@ -65,7 +65,7 @@ Try it on a real project:
 
 ```bash
 cd /path/to/some/project
-node /path/to/imageforge/dist/cli.js -c
+node /path/to/vysk/dist/cli.js -c
 ```
 
 ### CLI options
@@ -77,11 +77,12 @@ node /path/to/imageforge/dist/cli.js -c
 | `--lossless` | Force lossless WebP encoding | `false` |
 | `--no-cache` | Ignore the cache and reprocess every image | — |
 | `--dry-run` | Show what would happen — no files written, cache untouched | — |
+| `--json` | Print the report as JSON instead of colored text (CI/scripting) | — |
 | `-h`, `--help` | Show help | — |
 
 ### Config file
 
-`imageforge.config.js` in the project root (CommonJS, same convention
+`vysk.config.js` in the project root (CommonJS, same convention
 as `next.config.js`/`tailwind.config.js`):
 
 ```js
@@ -98,10 +99,10 @@ than failing the run.
 
 ### Caching
 
-Results are cached in `.imageforge/cache.json` (already gitignored).
+Results are cached in `.vysk/cache.json` (already gitignored).
 An image is only reprocessed if any of these changed since the last
 run: the file's content, the `quality`/`lossless` settings, or the
-installed imageforge version. If the cached output file has been
+installed vysk version. If the cached output file has been
 deleted, it's treated as a miss and reprocessed. Use `--no-cache` to
 bypass the cache entirely.
 
@@ -112,12 +113,12 @@ The simplest integration — add to the target project's `package.json`:
 ```json
 {
   "scripts": {
-    "prebuild": "imageforge -c"
+    "prebuild": "vysk -c"
   }
 }
 ```
 
-`npm run build` will now run ImageForge first automatically. A deeper
+`npm run build` will now run Vysk first automatically. A deeper
 integration (an actual Next.js/webpack plugin hooking into the
 bundler) is real additional scope — this covers "runs automatically"
 without it, and pairs with the cache above so repeat builds only
@@ -125,28 +126,37 @@ process what changed.
 
 ## Publishing
 
+Don't publish by hand — a single machine can only ever build the
+`.node` binary for its own platform, so an `npm publish` run locally
+would ship a package that only works there.
+
 ```bash
-npm run build
-npx napi create-npm-dirs   # sets up per-platform package folders under npm/
-npm publish
+git tag v0.2.0
+git push --tags
 ```
 
-The CI workflow in `.github/workflows/ci.yml` builds and tests on
-Linux/macOS/Windows for the host architecture. Cross-compiling the full
-target matrix (linux-musl, arm64, etc.) needs additional toolchains per
-target — see the [napi-rs docs](https://napi.rs/docs/) when you're ready
-to publish multi-platform binaries.
+Pushing a version tag triggers `.github/workflows/release.yml`, which
+builds the native addon on real Linux, Windows, and macOS (x64 + arm64)
+runners, verifies each one actually loads before continuing, then
+publishes a single package containing all four binaries. You can also
+trigger it manually from the Actions tab (`workflow_dispatch`) without
+pushing a tag. Requires an `NPM_TOKEN` secret in the repo's Settings →
+Secrets and variables → Actions.
 
-### Rewriting references (`imageforge rewrite`)
+`.github/workflows/ci.yml` is separate — it just builds and tests on
+each OS for every push/PR, as a sanity check. It doesn't publish
+anything.
 
-Once `imageforge -c` has optimized some images, `imageforge rewrite`
+### Rewriting references (`vysk rewrite`)
+
+Once `vysk -c` has optimized some images, `vysk rewrite`
 updates your actual source code to point at the new files:
 
 ```bash
-npx imageforge rewrite
+npx vysk rewrite
 ```
 
-It reads `.imageforge/cache.json` to find every image that's already
+It reads `.vysk/cache.json` to find every image that's already
 been converted, scans `.tsx`/`.jsx`/`.js`/`.css`/`.scss` for references
 to those originals (JSX `src="..."`, CSS `background-image: url(...)`,
 and local `import`/`require` specifiers), and — after showing the full
@@ -162,12 +172,62 @@ Safety, all non-negotiable:
 - Never writes without an explicit `y` — piped/non-interactive input
   safely defaults to No rather than guessing.
 - Backs up every touched file's original content to
-  `.imageforge/rewrite-backups/<timestamp>/` before writing, in
+  `.vysk/rewrite-backups/<timestamp>/` before writing, in
   addition to whatever git already gives you.
 
 This is regex/text-based matching, not an AST-aware codemod — dynamic
 or computed paths (e.g. `` src={`/images/${slug}.jpg`} ``) won't be
 caught. Always read the printed plan before answering `y`.
+
+### Removing unused originals (`vysk clean`)
+
+Once `rewrite` has pointed your source at the optimized files, the
+original PNG/JPG is often dead weight. `vysk clean` finds
+originals with a recorded conversion that no longer appear to be
+referenced anywhere in scanned source, shows the full list with sizes,
+and asks for confirmation before deleting them:
+
+```bash
+npx vysk clean          # shows the plan, asks to confirm
+npx vysk clean --dry-run   # shows the plan, deletes nothing
+```
+
+Uses the exact same text-matching rules as `rewrite` — so it shares the
+same blind spot: an image referenced only from a file type outside
+`.tsx`/`.jsx`/`.js`/`.css`/`.scss` (a plain `.html` file, for instance),
+or via a dynamic/computed path, won't be recognized as "referenced" and
+could be flagged even though it's still in use. "Not referenced" here
+is evidence, not proof — review the printed list before confirming.
+Same safety model as `rewrite`: refuses to run on an unclean git tree
+unless `--force` is passed.
+
+### Undoing a rewrite (`vysk undo`)
+
+`rewrite` backs up every file it touches to
+`.vysk/rewrite-backups/<timestamp>/` before writing — `undo`
+is what actually reads that backup back:
+
+```bash
+npx vysk undo             # restores the most recent backup
+npx vysk undo --list      # lists available backups, newest first
+npx vysk undo <timestamp> # restores a specific one
+```
+
+Same safety model again: shows the full list of files it's about to
+overwrite, asks for confirmation, and refuses on an unclean git tree
+unless `--force` is passed.
+
+### Checking your setup (`vysk doctor`)
+
+```bash
+npx vysk doctor
+```
+
+Confirms Node.js is a supported version, the native addon actually
+loads on this platform, your project root can be found, and
+`.vysk/cache.json` (if present) is valid JSON. Read-only, no
+confirmation needed — safe to run any time, and the first thing worth
+running if something's not working after install.
 
 ## Roadmap
 
@@ -176,15 +236,18 @@ CLI-triggered, one-shot conversion. Non-destructive: only `.webp`/`.avif`
 files are written, originals are never touched.
 
 **Phase 2 — Automate** ✅ done (`v1.x`)
-Hash-based caching (`.imageforge/cache.json`) so only new/changed images
+Hash-based caching (`.vysk/cache.json`) so only new/changed images
 get reprocessed, a config file for defaults, and a `prebuild` script
 pattern to run automatically on every build. Still non-destructive.
 
 **Phase 3 — Website intelligence** 🚧 in progress (`v2.x`)
-Reference rewriting (`imageforge rewrite`) is done — see above. Still
-to come: detecting/removing now-unused originals (safe now that full
-replace means "referenced" is unambiguous), responsive variants/`srcset`,
-oversized-image detection.
+Reference rewriting (`vysk rewrite`), removing now-unused
+originals (`vysk clean`), and restoring a rewrite (`vysk
+undo`) are all done — see above. Still to come: responsive
+variants/`srcset`, oversized-image detection.
+
+**Also shipped:** `vysk doctor` (environment diagnostics) and
+`--json` output on `-c` for CI/scripting.
 
 ## License
 

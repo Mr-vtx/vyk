@@ -6,7 +6,7 @@ import { test } from 'node:test';
 import { ImageCache } from './cache';
 
 async function makeTempProject(): Promise<{ root: string; outputPath: string }> {
-  const root = await mkdtemp(join(tmpdir(), 'imageforge-cache-test-'));
+  const root = await mkdtemp(join(tmpdir(), 'vysk-cache-test-'));
   const outputPath = join(root, 'output.webp');
   await writeFile(outputPath, 'fake-webp-bytes');
   return { root, outputPath };

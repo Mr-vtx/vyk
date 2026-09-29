@@ -1,9 +1,9 @@
 [package]
-name = "imageforge"
+name = "vysk"
 version = "0.1.0"
 edition = "2021"
 license = "MIT"
-description = "Rust core for ImageForge: decodes PNG/JPEG and encodes optimized WebP"
+description = "Rust core for Vysk: decodes PNG/JPEG and encodes optimized WebP"
 
 [lib]
 crate-type = ["cdylib"]

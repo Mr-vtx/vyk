@@ -1,38 +1,29 @@
-import { existsSync } from 'node:fs';
-import { readdir } from 'node:fs/promises';
-import { dirname, extname, join, resolve } from 'node:path';
+import { existsSync } from "node:fs";
+import { readdir } from "node:fs/promises";
+import { dirname, extname, join, resolve } from "node:path";
 
-const SUPPORTED_EXTENSIONS = new Set(['.png', '.jpg', '.jpeg']);
-const SKIP_DIR_NAMES = new Set(['node_modules']);
+const SUPPORTED_EXTENSIONS = new Set([".png", ".jpg", ".jpeg"]);
+const SKIP_DIR_NAMES = new Set(["node_modules"]);
 
-/**
- * Walk upward from `startDir` until a directory containing `package.json`
- * is found. Throws if it reaches the filesystem root without finding one.
- */
 export function findProjectRoot(startDir: string = process.cwd()): string {
   let dir = resolve(startDir);
 
   // eslint-disable-next-line no-constant-condition
   while (true) {
-    if (existsSync(join(dir, 'package.json'))) {
+    if (existsSync(join(dir, "package.json"))) {
       return dir;
     }
 
     const parent = dirname(dir);
     if (parent === dir) {
       throw new Error(
-        'Could not find a package.json in this directory or any parent directory.'
+        "Could not find a package.json in this directory or any parent directory.",
       );
     }
     dir = parent;
   }
 }
 
-/**
- * Recursively find optimizable images (PNG/JPG/JPEG) under `dir`.
- * Skips `node_modules` and dot-directories. Returns an empty array
- * (rather than throwing) if `dir` doesn't exist.
- */
 export async function findImages(dir: string): Promise<string[]> {
   const results: string[] = [];
 
@@ -48,14 +39,17 @@ export async function findImages(dir: string): Promise<string[]> {
       const fullPath = join(current, entry.name);
 
       if (entry.isDirectory()) {
-        if (SKIP_DIR_NAMES.has(entry.name) || entry.name.startsWith('.')) {
+        if (SKIP_DIR_NAMES.has(entry.name) || entry.name.startsWith(".")) {
           continue;
         }
         await walk(fullPath);
         continue;
       }
 
-      if (entry.isFile() && SUPPORTED_EXTENSIONS.has(extname(entry.name).toLowerCase())) {
+      if (
+        entry.isFile() &&
+        SUPPORTED_EXTENSIONS.has(extname(entry.name).toLowerCase())
+      ) {
         results.push(fullPath);
       }
     }

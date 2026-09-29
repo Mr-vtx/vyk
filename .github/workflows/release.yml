@@ -20,16 +20,16 @@ jobs:
         include:
           - os: ubuntu-latest
             target: x86_64-unknown-linux-gnu
-            artifact: imageforge.linux-x64-gnu.node
+            artifact: vysk.linux-x64-gnu.node
           - os: windows-latest
             target: x86_64-pc-windows-msvc
-            artifact: imageforge.win32-x64-msvc.node
+            artifact: vysk.win32-x64-msvc.node
           - os: macos-13 # Intel runner
             target: x86_64-apple-darwin
-            artifact: imageforge.darwin-x64.node
+            artifact: vysk.darwin-x64.node
           - os: macos-latest # Apple Silicon runner
             target: aarch64-apple-darwin
-            artifact: imageforge.darwin-arm64.node
+            artifact: vysk.darwin-arm64.node
 
     runs-on: ${{ matrix.os }}
 

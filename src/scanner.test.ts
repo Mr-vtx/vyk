@@ -6,7 +6,7 @@ import { test } from 'node:test';
 import { findImages, findProjectRoot } from './scanner';
 
 async function makeTempProject(): Promise<string> {
-  const root = await mkdtemp(join(tmpdir(), 'imageforge-test-'));
+  const root = await mkdtemp(join(tmpdir(), 'vysk-test-'));
   await writeFile(join(root, 'package.json'), '{"name":"fixture"}');
   await mkdir(join(root, 'public', 'nested'), { recursive: true });
   await mkdir(join(root, 'public', 'node_modules'), { recursive: true });
@@ -48,6 +48,6 @@ test('findImages finds png/jpg/jpeg recursively, skips node_modules and other fi
 });
 
 test('findImages returns an empty array for a directory that does not exist', async () => {
-  const images = await findImages(join(tmpdir(), 'imageforge-does-not-exist-xyz'));
+  const images = await findImages(join(tmpdir(), 'vysk-does-not-exist-xyz'));
   assert.deepEqual(images, []);
 });

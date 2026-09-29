@@ -57,7 +57,7 @@ pub fn optimize_image(
     panic::catch_unwind(AssertUnwindSafe(|| optimize_image_inner(input_path, options)))
         .unwrap_or_else(|panic_payload| {
             Err(napi::Error::from_reason(format!(
-                "ImageForge hit an internal error while processing {input_path_for_panic_msg}: {}",
+                "Vysk hit an internal error while processing {input_path_for_panic_msg}: {}",
                 panic_message(&panic_payload)
             )))
         })

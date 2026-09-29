@@ -1,13 +1,15 @@
-import { createHash } from 'node:crypto';
-import { existsSync } from 'node:fs';
-import { mkdir, readFile, writeFile } from 'node:fs/promises';
-import { dirname, join } from 'node:path';
+import { createHash } from "node:crypto";
+import { existsSync } from "node:fs";
+import { mkdir, readFile, writeFile } from "node:fs/promises";
+import { dirname, join } from "node:path";
 
 // eslint-disable-next-line @typescript-eslint/no-var-requires
-const { version: TOOL_VERSION } = require('../package.json') as { version: string };
+const { version: TOOL_VERSION } = require("../package.json") as {
+  version: string;
+};
 
 const CACHE_VERSION = 1;
-const CACHE_RELATIVE_PATH = '.imageforge/cache.json';
+const CACHE_RELATIVE_PATH = ".vysk/cache.json";
 
 export interface CacheEntry {
   hash: string;
@@ -33,13 +35,13 @@ export class ImageCache {
 
   private constructor(
     private readonly cachePath: string,
-    private data: CacheFile
+    private data: CacheFile,
   ) {}
 
   static async load(projectRoot: string): Promise<ImageCache> {
     const cachePath = join(projectRoot, CACHE_RELATIVE_PATH);
     try {
-      const raw = await readFile(cachePath, 'utf8');
+      const raw = await readFile(cachePath, "utf8");
       const parsed = JSON.parse(raw) as CacheFile;
       if (parsed.version === CACHE_VERSION && parsed.entries) {
         return new ImageCache(cachePath, parsed);
@@ -52,15 +54,15 @@ export class ImageCache {
 
   async hashFile(filePath: string): Promise<string> {
     const contents = await readFile(filePath);
-    return createHash('sha256').update(contents).digest('hex');
+    return createHash("sha256").update(contents).digest("hex");
   }
 
-  /**
-   * Returns the cached entry if it's still valid: same content hash, same
-   * quality/lossless settings, produced by the same tool version, and the
-   * output file it points to still actually exists on disk.
-   */
-  get(filePath: string, hash: string, quality: number, lossless: boolean): CacheEntry | undefined {
+  get(
+    filePath: string,
+    hash: string,
+    quality: number,
+    lossless: boolean,
+  ): CacheEntry | undefined {
     const entry = this.data.entries[filePath];
     if (
       entry &&
@@ -75,10 +77,7 @@ export class ImageCache {
     return undefined;
   }
 
-  set(
-    filePath: string,
-    entry: Omit<CacheEntry, 'toolVersion'>
-  ): void {
+  set(filePath: string, entry: Omit<CacheEntry, "toolVersion">): void {
     this.data.entries[filePath] = { ...entry, toolVersion: TOOL_VERSION };
     this.dirty = true;
   }

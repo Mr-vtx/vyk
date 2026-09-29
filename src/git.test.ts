@@ -18,7 +18,7 @@ function initTestRepo(root: string): void {
 }
 
 test("reports not a repo when there is no .git directory", async () => {
-  const root = await mkdtemp(join(tmpdir(), "imageforge-git-test-"));
+  const root = await mkdtemp(join(tmpdir(), "vysk-git-test-"));
   try {
     const status = checkGitStatus(root);
     assert.equal(status.isRepo, false);
@@ -29,7 +29,7 @@ test("reports not a repo when there is no .git directory", async () => {
 });
 
 test("reports clean for a repo with a committed file and no changes", async () => {
-  const root = await mkdtemp(join(tmpdir(), "imageforge-git-test-"));
+  const root = await mkdtemp(join(tmpdir(), "vysk-git-test-"));
   try {
     initTestRepo(root);
     await writeFile(join(root, "file.txt"), "hello");
@@ -45,7 +45,7 @@ test("reports clean for a repo with a committed file and no changes", async () =
 });
 
 test("reports dirty when there are uncommitted changes", async () => {
-  const root = await mkdtemp(join(tmpdir(), "imageforge-git-test-"));
+  const root = await mkdtemp(join(tmpdir(), "vysk-git-test-"));
   try {
     initTestRepo(root);
     await writeFile(join(root, "file.txt"), "hello");
@@ -63,7 +63,7 @@ test("reports dirty when there are uncommitted changes", async () => {
 });
 
 test("reports dirty for an untracked file in an otherwise clean repo", async () => {
-  const root = await mkdtemp(join(tmpdir(), "imageforge-git-test-"));
+  const root = await mkdtemp(join(tmpdir(), "vysk-git-test-"));
   try {
     initTestRepo(root);
     await writeFile(join(root, "file.txt"), "hello");
@@ -81,7 +81,7 @@ test("reports dirty for an untracked file in an otherwise clean repo", async () 
 });
 
 test("finds a repo rooted in a parent directory, not just projectRoot itself", async () => {
-  const parent = await mkdtemp(join(tmpdir(), "imageforge-git-test-"));
+  const parent = await mkdtemp(join(tmpdir(), "vysk-git-test-"));
   try {
     initTestRepo(parent);
     await writeFile(join(parent, "root.txt"), "hello");
